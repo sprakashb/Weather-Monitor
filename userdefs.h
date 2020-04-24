@@ -1,6 +1,5 @@
 #define AMPM_Fmt   // When 12 hour Format required else comment it out by // in the front
 
-#define utc_display   // if utc Time needed
 const int utc_hr_difference = 5;  // IST is 5 Hr 30min Ahead. Use -ve no. if behind utc
 const int utc_min_difference = 30;
 

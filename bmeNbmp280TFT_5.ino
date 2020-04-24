@@ -13,6 +13,7 @@
 // 3-setting the time and date from Serial terminal.
 // If using Arduino Mega 4 wires need to be soldered on back side.
 // Details on vu2spf.blogspot.com, email: vu2spf@gmail.com
+// Licensed under GPL3
 // ***************************************************************************/
 // TFT display for weather station by SPB 30/3/2020 during Lockdown with BME280 T/P/H sens
 // Added BMP280 T/P  sens  19/4/2020  -- Lockdown --
@@ -61,9 +62,10 @@ bool status;
 bool rtc_ok, bmp_ok, bme_ok;
 unsigned long begintime;
 int ret_sbmp;
-int hr, mn, sc, dt, mon, yr, prev_date = 0; // temp storage
+int hr_24, hr, mn, sc, dt, mon, yr, prev_date = 0; // temp storage
 int utchr, utcmn, utcsc;  // utc
 String ampm = "TM";
+bool from_setup = false; // flag to indicate restart
 
 // Function Prototypes in sequence of appearance
 // Main Tab
@@ -112,6 +114,7 @@ void setup()
   {
     rtc_ok = true;
     displ_date_time();
+    prev_date = dt;
   }   // RTC OK
   else if (!rtc.isrunning())
   {
@@ -152,6 +155,8 @@ void setup()
   }
   display_weather();
   begintime = millis();
+
+  from_setup = true;  // indicate a reboot
   save_header();
   save_data();  // initial value
 }
@@ -211,10 +216,10 @@ void displ_date_time()
     tft.setCursor( 5, 5); // Date Time x tftwd / 4
 
     DateTime now = rtc.now();
-    hr = now.hour();
+    hr_24 = now.hour();
     mn = now.minute();
     sc = now.second();
-
+    hr = hr_24;  // needed to save on SD card
     utcmn = mn  - utc_min_difference;
     if (utcmn < 0)
     {
@@ -446,6 +451,8 @@ void delete_data_file()
   Serial.println();
   if ( !dataFile.open("data1.txt",  FILE_WRITE))
     Serial.println("FIle Open Error @delete");
+
+  dataFile.println("Blank Data File Recreated");
   dataFile.close();
 
   save_header();
@@ -519,9 +526,9 @@ void save_data()
   //if(mn%10 == 0)  // store data on SDCard on 0,10,20... mins
 
   // Save data on SD Card
-  if (hr < 10)
+  if (hr_24 < 10)
     dataFile.print("0");
-  dataFile.print(hr);
+  dataFile.print(hr_24); // must save in 24 hr format
   dataFile.print(":");
   if (mn < 10)
     dataFile.print("0");
@@ -551,13 +558,20 @@ void save_header()
 {
   if ( !dataFile.open("data1.txt", FILE_WRITE | FILE_READ))
     Serial.println("FIle Open Error @header");
+  if (from_setup)
+  {
+    dataFile.println("-----------------Reboot---------------");
+    from_setup = false;
+  }
+  else
+    dataFile.println("---------------------------------------");
   dataFile.print(dt);
   dataFile.print("/");
   dataFile.print(mon);
   dataFile.print("/");
   dataFile.println(yr);
-  dataFile.println("-----------------------------------");
-  dataFile.println(F("Hr:Min Tin   Pin  Hin   Tout Pout")); // Header
-  dataFile.println("-----------------------------------");
+  dataFile.println("---------------------------------------");
+  dataFile.println(F("Hr:Min  Tin     Pin   Hin   Tout Pout")); // Header
+  dataFile.println("---------------------------------------");
   dataFile.close();
 }
